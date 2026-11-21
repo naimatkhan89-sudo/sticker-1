@@ -59,6 +59,55 @@ jobs:
           print("Gradle dependency placement fixed.")
           PY
 
+      - name: Align Java and Kotlin targets
+        run: |
+          python3 - "$PROJECT_DIR" <<'PY'
+          import sys
+          import re
+          from pathlib import Path
+
+          p = Path(sys.argv[1]) / "app" / "build.gradle"
+          s = p.read_text()
+
+          s = re.sub(
+              r'(sourceCompatibility\s+)(?:JavaVersion\.VERSION_1_8|1\.8)',
+              r'\g<1>JavaVersion.VERSION_17', s
+          )
+          s = re.sub(
+              r'(targetCompatibility\s+)(?:JavaVersion\.VERSION_1_8|1\.8)',
+              r'\g<1>JavaVersion.VERSION_17', s
+          )
+
+          if "compileOptions {" not in s:
+              s = re.sub(
+                  r'(android\s*\{)',
+                  r"""\1
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          """, s, count=1
+              )
+
+          if "kotlinOptions {" in s:
+              s = re.sub(
+                  r"jvmTarget\s*=\s*['\"](?:1\.8|17)['\"]",
+                  "jvmTarget = '17'", s
+              )
+          else:
+              s = re.sub(
+                  r'(android\s*\{)',
+                  r"""\1
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+          """, s, count=1
+              )
+
+          p.write_text(s)
+          print("Java and Kotlin targets set to 17")
+          PY
+
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
