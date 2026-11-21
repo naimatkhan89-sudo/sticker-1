@@ -25,17 +25,28 @@ jobs:
 
       - name: Extract ZIP
         run: |
+          unzip -q Naimat_Khan_3D_Text_Studio_GitHub_Build.zip -d extracted
+          PROJECT_DIR=$(find extracted -name settings.gradle -type f -print -quit | xargs dirname)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: settings.gradle not found"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
       - name: Fix Gradle dependency placement
         run: |
-          python3 - <<'PY'
-          import os
+          python3 - "$PROJECT_DIR" <<'PY'
+          import sys
           from pathlib import Path
 
-          p = Path(os.environ["PROJECT_DIR"]) / "app" / "build.gradle"
+          p = Path(sys.argv[1]) / "app" / "build.gradle"
           lines = p.read_text().splitlines()
 
           dep = "implementation 'androidx.core:core-ktx:1.15.0'"
-          lines = [line for line in lines if "androidx.core:core-ktx:1.15.0" not in line]
+          lines = [
+              line for line in lines
+              if "androidx.core:core-ktx:1.15.0" not in line
+          ]
 
           for i, line in enumerate(lines):
               if line.strip() == "dependencies {":
@@ -47,10 +58,6 @@ jobs:
           p.write_text("\n".join(lines) + "\n")
           print("Gradle dependency placement fixed.")
           PY
-
-          unzip -q Naimat_Khan_3D_Text_Studio_GitHub_Build.zip -d extracted
-          PROJECT_DIR=$(find extracted -name settings.gradle -type f -print -quit | xargs dirname)
-          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
 
       - name: Build APK
         run: |
