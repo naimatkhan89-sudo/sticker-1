@@ -25,6 +25,29 @@ jobs:
 
       - name: Extract ZIP
         run: |
+      - name: Fix Gradle dependency placement
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          p = Path(os.environ["PROJECT_DIR"]) / "app" / "build.gradle"
+          lines = p.read_text().splitlines()
+
+          dep = "implementation 'androidx.core:core-ktx:1.15.0'"
+          lines = [line for line in lines if "androidx.core:core-ktx:1.15.0" not in line]
+
+          for i, line in enumerate(lines):
+              if line.strip() == "dependencies {":
+                  lines.insert(i + 1, "    " + dep)
+                  break
+          else:
+              lines.extend(["", "dependencies {", "    " + dep, "}"])
+
+          p.write_text("\n".join(lines) + "\n")
+          print("Gradle dependency placement fixed.")
+          PY
+
           unzip -q Naimat_Khan_3D_Text_Studio_GitHub_Build.zip -d extracted
           PROJECT_DIR=$(find extracted -name settings.gradle -type f -print -quit | xargs dirname)
           echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
